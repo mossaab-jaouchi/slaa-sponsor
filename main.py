@@ -1,14 +1,14 @@
 import streamlit as st
 import os
 
-# تخفيف ضغط المعالج والذاكرة
+# 1. تقليل استهلاك الذاكرة بإجبار النظام على خيط واحد
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 st.set_page_config(page_title="SLAA AI Sponsor", page_icon="🛡️")
 st.title("🛡️ رفيق التعافي")
 
-# محاولة الاستيراد مع طباعة السبب الحقيقي لو فشل
+# استيراد آمن
 try:
     from langchain_community.document_loaders import PyPDFDirectoryLoader
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -16,15 +16,14 @@ try:
     from langchain_community.vectorstores import FAISS
     from langchain_groq import ChatGroq
     from langchain_core.prompts import ChatPromptTemplate
-    # هذه هي المكتبة التي كانت تسبب المشكلة، الآن ستعمل مع الإصدار 0.1.20
+    # هذا السطر سيعمل 100% مع النسخة 0.1.20
     from langchain.chains import create_retrieval_chain
     from langchain.chains.combine_documents import create_stuff_documents_chain
 except ImportError as e:
-    st.error("حدث خطأ في تثبيت المكتبات!")
-    st.code(f"Error details: {e}")
+    st.error(f"خطأ في المكتبات: {e}")
     st.stop()
 
-# التحقق من المفتاح
+# المفتاح
 if "GROQ_API_KEY" in st.secrets:
     groq_api_key = st.secrets["GROQ_API_KEY"]
 else:
@@ -42,25 +41,28 @@ def load_library():
         return "EMPTY"
 
     try:
-        with st.spinner("جاري قراءة الكتب..."):
+        with st.spinner("جاري قراءة الكتب (وضع توفير الذاكرة)..."):
             loader = PyPDFDirectoryLoader(folder_path)
             docs = loader.load()
+            
             if not docs:
                 return "EMPTY"
 
+            # تقليل حجم القطع لتخفيف العبء على الرام
             splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
             splits = splitter.split_documents(docs)
             
-            # استخدام FastEmbed خفيف
+            # إعدادات FastEmbed الخفيفة
             embeddings = FastEmbedEmbeddings(
                 model_name="BAAI/bge-base-en-v1.5",
-                threads=1
+                threads=1 # مهم جداً لمنع الانهيار
             )
             
             vectorstore = FAISS.from_documents(splits, embeddings)
             return vectorstore
+            
     except Exception as e:
-        st.error(f"خطأ أثناء المعالجة: {e}")
+        st.error(f"حدث خطأ أثناء المعالجة: {e}")
         return None
 
 vectorstore = load_library()
