@@ -1,18 +1,14 @@
 import streamlit as st
 import os
 
-# إعداد الصفحة
+# 1. أوامر صارمة لتقليل استهلاك الذاكرة (مهم جداً للاستضافة المجانية)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 st.set_page_config(page_title="SLAA AI Sponsor", page_icon="🛡️")
 st.title("🛡️ رفيق التعافي")
 
-# التحقق من المفتاح
-if "GROQ_API_KEY" in st.secrets:
-    groq_api_key = st.secrets["GROQ_API_KEY"]
-else:
-    st.error("المفتاح غير موجود! تأكد من إضافته في Secrets.")
-    st.stop()
-
-# محاولة استيراد المكتبات مع كاشف أخطاء
+# استيراد المكتبات بحذر
 try:
     from langchain_community.document_loaders import PyPDFDirectoryLoader
     from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -20,51 +16,64 @@ try:
     from langchain_community.vectorstores import FAISS
     from langchain_groq import ChatGroq
     from langchain_core.prompts import ChatPromptTemplate
-    # في النسخة 0.1.20 هذا الاستيراد يعمل 100%
     from langchain.chains import create_retrieval_chain
     from langchain.chains.combine_documents import create_stuff_documents_chain
 except ImportError as e:
-    st.error(f"خطأ في تثبيت المكتبات (تأكد من requirements.txt): {e}")
+    st.error(f"خطأ في المكتبات: {e}")
+    st.stop()
+
+# التحقق من المفتاح
+if "GROQ_API_KEY" in st.secrets:
+    groq_api_key = st.secrets["GROQ_API_KEY"]
+else:
+    st.warning("⚠️ المفتاح غير موجود.")
     st.stop()
 
 @st.cache_resource
 def load_library():
-    folder_path = "library" 
+    folder_path = "library"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
         return None
+    
     if not os.listdir(folder_path):
         return "EMPTY"
 
     try:
-        with st.spinner("جاري قراءة الكتب..."):
+        with st.spinner("جاري قراءة الكتب (وضع توفير الذاكرة)..."):
             loader = PyPDFDirectoryLoader(folder_path)
             docs = loader.load()
+            
             if not docs:
                 return "EMPTY"
-                
-            splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+            # 2. تقليل حجم القطع من 1000 إلى 500 لتخفيف الضغط على الرام
+            splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
             splits = splitter.split_documents(docs)
             
-            # استخدام FastEmbed لتفادي مشاكل الذاكرة والتوافق
-            embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+            # 3. إجبار الموديل على العمل بخيط واحد (threads=1)
+            embeddings = FastEmbedEmbeddings(
+                model_name="BAAI/bge-base-en-v1.5",
+                threads=1
+            )
             
             vectorstore = FAISS.from_documents(splits, embeddings)
             return vectorstore
+            
     except Exception as e:
-        st.error(f"حدث خطأ أثناء المعالجة: {e}")
+        st.error(f"حدث خطأ (غالباً الذاكرة ممتلئة): {e}")
         return None
 
 vectorstore = load_library()
 
 if vectorstore is None:
-    st.info("👋 مرحبًا! قم برفع ملفات PDF في مجلد 'library' على GitHub.")
+    st.info("الرجاء التأكد من ملفات PDF.")
     st.stop()
 elif vectorstore == "EMPTY":
-    st.warning("⚠️ المكتبة فارغة. الرجاء وضع ملفات PDF.")
+    st.warning("⚠️ المكتبة فارغة.")
     st.stop()
 
-# إعداد الذكاء الاصطناعي
+# إعداد الموجه
 system_prompt = (
     "Answer in Arabic only. You are a strict SLAA sponsor. "
     "Use the context below to guide the user.\n\n"
