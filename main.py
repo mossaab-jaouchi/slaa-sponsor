@@ -1,12 +1,13 @@
 import streamlit as st
 import os
-# استيراد المحرك السريع
-from langchain_community.embeddings import FastEmbedEmbeddings
+# استيراد المكتبات الأساسية
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
+# استيراد السلاسل (يعمل 100% مع langchain==0.1.20)
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
@@ -35,7 +36,7 @@ def load_library():
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = splitter.split_documents(docs)
         
-        # استخدام FastEmbed (خفيف ولا يسبب مشاكل التوافق)
+        # استخدام FastEmbed (سريع ومتوافق)
         embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
         
         vectorstore = FAISS.from_documents(splits, embeddings)
