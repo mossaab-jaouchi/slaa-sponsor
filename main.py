@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-# نستخدم FastEmbed هنا بدلاً من HuggingFace
+# السطر 6: تأكد أنها FastEmbedEmbeddings
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
@@ -34,7 +34,7 @@ def load_library():
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = splitter.split_documents(docs)
         
-        # استخدام FastEmbed لتفادي مشاكل التوافق
+        # السطر 40: المحرك الجديد السريع
         embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-base-en-v1.5")
         
         vectorstore = FAISS.from_documents(splits, embeddings)
