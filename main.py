@@ -1,8 +1,10 @@
+#hi
 import streamlit as st
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+# لاحظ: نستخدم المكتبة المجتمعية هنا لأنها أكثر استقراراً
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -17,29 +19,27 @@ st.title("🛡️ رفيق التعافي (نسخة الويب السريعة)")
 if "GROQ_API_KEY" in st.secrets:
     groq_api_key = st.secrets["GROQ_API_KEY"]
 else:
-    st.error("مفتاح API غير موجود! يرجى إضافته في إعدادات Streamlit.")
+    st.error("مفتاح API غير موجود! تأكد من إضافته في Secrets.")
     st.stop()
 
 @st.cache_resource
 def load_library():
-    # في السيرفر، الملفات ستكون في نفس المسار
     folder_path = "library" 
     
     if not os.path.exists(folder_path):
-        os.makedirs(folder_path) # إنشاء المجلد لو لم يكن موجوداً لتجنب الأخطاء
+        os.makedirs(folder_path)
         return None
         
     if not os.listdir(folder_path):
         return "EMPTY"
 
-    with st.spinner("جاري بناء قاعدة المعرفة... (يحدث مرة واحدة)"):
+    with st.spinner("جاري بناء قاعدة المعرفة..."):
         loader = PyPDFDirectoryLoader(folder_path)
         docs = loader.load()
-        # تقطيع النصوص
         splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         splits = splitter.split_documents(docs)
         
-        # استخدام موديل فهرسة مجاني وسريع يعمل على CPU السيرفر
+        # استخدام الموديل مع تحديد الجهاز CPU لتجنب مشاكل الذاكرة
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         
         vectorstore = FAISS.from_documents(splits, embeddings)
@@ -48,10 +48,10 @@ def load_library():
 vectorstore = load_library()
 
 if not vectorstore or vectorstore == "EMPTY":
-    st.warning("⚠️ المكتبة فارغة أو غير موجودة. تأكد من رفع مجلد 'library' مع الكود.")
+    st.warning("⚠️ المكتبة فارغة. تأكد من وجود ملفات PDF داخل مجلد 'library'.")
     st.stop()
 
-# إعداد الموجه الصارم
+# إعداد الموجه
 system_prompt = (
     "You are an expert SLAA Sponsor using the Llama-3-70b model. "
     "Your Goal: Guide the user to sobriety based strictly on the provided context.\n"
@@ -68,7 +68,6 @@ prompt = ChatPromptTemplate.from_messages([
     ("human", "{input}"),
 ])
 
-# استخدام محرك Groq الخارق (Llama 3 - 70B)
 llm = ChatGroq(
     groq_api_key=groq_api_key, 
     model_name="llama3-70b-8192"
@@ -77,7 +76,6 @@ llm = ChatGroq(
 retriever = vectorstore.as_retriever()
 chain = create_retrieval_chain(retriever, create_stuff_documents_chain(llm, prompt))
 
-# واجهة الشات
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
