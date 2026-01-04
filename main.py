@@ -24,9 +24,8 @@ except ImportError as e:
     st.stop()
 
 # المفتاح
-if "GROQ_API_KEY" in st.secrets:
-    groq_api_key = st.secrets["GROQ_API_KEY"]
-else:
+groq_api_key = os.environ.get("GROQ_API_KEY")
+if not groq_api_key:
     st.warning("⚠️ المفتاح غير موجود.")
     st.stop()
 
