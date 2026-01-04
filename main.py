@@ -6,7 +6,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 st.set_page_config(page_title="SLAA AI Sponsor", page_icon="🛡️")
-st.title("🛡️ رفيق التعافي")
+st.title("🛡️ موجهي الرقمي")
 
 # استيراد آمن
 try:
