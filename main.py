@@ -47,14 +47,14 @@ def load_library():
             if not docs:
                 return "EMPTY"
 
-            # تقليل حجم القطع لتخفيف العبء على الرام
-            splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+            # تقليل حجم القطع بشكل أكبر لتخفيف العبء على الرام
+            splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=30)
             splits = splitter.split_documents(docs)
             
-            # إعدادات FastEmbed الخفيفة
+            # إعدادات FastEmbed الخفيفة جداً
             embeddings = FastEmbedEmbeddings(
-                model_name="BAAI/bge-base-en-v1.5",
-                threads=1 # مهم جداً لمنع الانهيار
+                model_name="BAAI/bge-small-en-v1.5",
+                threads=1
             )
             
             vectorstore = FAISS.from_documents(splits, embeddings)
